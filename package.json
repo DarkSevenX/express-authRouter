@@ -1,0 +1,19 @@
+{
+  "name": "express-authrouter",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["Prisma ORM", "ORM", "express", "login", "register", "auth express", "express auth"],
+  "author": "Nelson David Arguedo Ramos - DarkSevenX",
+  "license": "ISC",
+  "description": "paquete para proporcionar rutas de autenticación de usuarios utilizando Express, Prisma y JWT",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.19.2",
+    "express-validator": "^7.2.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
