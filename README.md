@@ -83,9 +83,7 @@ Esto añadirá las siguientes rutas a tu servidor:
 - **Request Body**:
   - `identity`: Identificador único del usuario (por ejemplo, `email` o `username`).
   - `password`: Contraseña del usuario.
-
   ``` json
-  headers: token: 'authtoken'
   {
     "username":"some username",
     "password":"some password"
@@ -121,7 +119,6 @@ Maneja la autenticación de un usuario existente.
   - `password`: Contraseña del usuario.
   
   ``` json
-  headers: token: 'authtoken'
   {
     "username":"some username",
     "password":"some password"
