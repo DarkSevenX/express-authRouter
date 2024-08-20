@@ -15,5 +15,13 @@
     "express": "^4.19.2",
     "express-validator": "^7.2.0",
     "jsonwebtoken": "^9.0.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DarkSevenX/express-authRouter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DarkSevenX/express-authRouter/issues"
+  },
+  "homepage": "https://github.com/DarkSevenX/express-authRouter#readme"
 }

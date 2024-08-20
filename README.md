@@ -217,7 +217,7 @@ Middleware para verificar si la tabla de usuarios existe en la base de datos.
   - **500 Internal Server Error**: La tabla `user` no existe o se produjo otro error.
     ```json
     {
-      "error": "La tabla user no existe"
+      "error": "the table user/users don't exists"
     }
     ```
 
