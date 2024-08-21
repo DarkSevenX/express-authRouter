@@ -12,26 +12,14 @@
 export const checkUserExists = (prisma) => 
     async (req, res, next) => {
         try {
-            const userCount = await prisma.user.count().catch(error => {
-                if (error.code === 'P2021') {
-                    return null;
-                }
-                throw error; 
-            });
-            const usersCount = await prisma.users.count().catch(error => {
-                if (error.code === 'P2021') {
-                    return null; 
-                }
-                throw error;
-            });
-
-            if (userCount === null && usersCount === null) {
-                res.status(404).json({ message: 'tabla user/users dont exists' });
-                return;
-            }
-
+            const userCount = await prisma.user.count()
             next(); 
         } catch (error) {
-            res.status(500).json({ message: 'Otro error ocurrió', error });
+            if (error.code === 'P2021') {
+              res.status(404).json('table user dont exists');
+              return false;
+            } else {
+              res.status(500).json({'Otro error ocurrió:': error});
+            }
         }
     };
