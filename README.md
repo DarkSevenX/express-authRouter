@@ -117,11 +117,13 @@ Maneja la autenticación de un usuario existente.
 - **Request Body**:
   - `identity`: Identificador único del usuario (por ejemplo, `email` o `username`).
   - `password`: Contraseña del usuario.
+  - `campos adicionales`: la request admite mas campos en caso de que nuestro modelo cuente con campos adicionales, opcionales o requeridos
   
   ``` json
   {
     "username":"some username",
-    "password":"some password"
+    "password":"some password",
+    "other_fields":"some other fields"
   }
   ```
 

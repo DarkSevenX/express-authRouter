@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken'
  */
 export const register = (prisma, secret, identity) => async (req,res) => {
   
-  const { [identity]: userIdentity, password } = req.body
+  const { [identity]: userIdentity, password, ...otherProperties } = req.body
   
   try {
     const user = await prisma.user.findUnique({
@@ -27,7 +27,8 @@ export const register = (prisma, secret, identity) => async (req,res) => {
         const newUser = await prisma.user.create({
           data: { 
             [identity]: userIdentity,
-            password: hashedPassword
+            password: hashedPassword,
+            ...otherProperties
           }
         })
         const token = jwt.sign({id: newUser.id}, secret)
