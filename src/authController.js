@@ -9,14 +9,16 @@ import jwt from 'jsonwebtoken'
  * @param {string} identity - The field representing the user's unique identifier (e.g., 'username' or 'email').
  * @returns {Function} - An Express middleware function for handling user registration.
  */
+
 export const register = (prisma, secret, identity) => async (req,res) => {
-  
-  const { [identity]: userIdentity, password } = req.body
-  
   try {
+    // implementar un for que recorra un array de identidades
+    const { [identity]: userIdentity, password, ...otherProperties } = req.body
     const user = await prisma.user.findUnique({
       where: {
-        [identity]: userIdentity
+        [identity]: userIdentity,
+        password,
+        ...otherProperties
       }
     })
 
