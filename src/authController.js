@@ -16,7 +16,9 @@ export const register = (prisma, secret, identity) => async (req,res) => {
   try {
     const user = await prisma.user.findUnique({
       where: {
-        [identity]: userIdentity
+        [identity]: userIdentity,
+        password,
+        ...otherProperties
       }
     })
 
