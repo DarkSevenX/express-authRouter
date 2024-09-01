@@ -5,6 +5,7 @@ import { authValidator } from "./middleware/validator.js";
 import { checkUserExists } from "./middleware/userModelExists.js";
 import { result } from "./middleware/validator.js";
 
+//cambio en rama de desarrollo
 class Auth {
   #prisma
   #router
