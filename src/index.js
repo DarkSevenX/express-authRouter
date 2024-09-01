@@ -3,6 +3,7 @@ import { register, login } from "./authController.js";
 import { verifyToken } from "./middleware/authJwt.js";
 import { authValidator } from "./middleware/validator.js";
 import { checkUserExists } from "./middleware/userModelExists.js";
+import { result } from "./middleware/validator.js";
 
 class Auth {
   #prisma
@@ -17,12 +18,12 @@ class Auth {
  * @param {string} secret - The secret key for generating JWT tokens.
  * @param {string} identity - The field representing the user's unique identifier (e.g., 'username' or 'email').
  */
-constructor (prismaObj, secret, identity) {
-  this.#prisma = prismaObj
-  this.#router = Router()
-  this.#secret = secret
-  this.#identity = identity
-}
+  constructor (prismaObj, secret, identity) {
+    this.#prisma = prismaObj
+    this.#router = Router()
+    this.#secret = secret
+    this.#identity = identity
+  }
 
   /**
    * Configures and returns middleware for verifying token.
@@ -60,6 +61,10 @@ constructor (prismaObj, secret, identity) {
       )
 
     return this.#router
+  }
+
+  result() {
+    return result()
   }
 }
 
