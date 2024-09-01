@@ -2,7 +2,7 @@ import { Router } from "express";
 import { register, login } from "./authController.js";
 import { verifyToken } from "./middleware/authJwt.js";
 import { authValidator } from "./middleware/validator.js";
-import { checkUserExists } from "./middleware/userModelExists.js";
+import { userModelExists } from "./middleware/userModelExists.js";
 import { result } from "./middleware/validator.js";
 
 //cambio en rama de desarrollo
@@ -42,7 +42,7 @@ class Auth {
   */
   routes() {
     this.#router.use(authValidator(this.#identity))
-    this.#router.use(checkUserExists(this.#prisma))
+    this.#router.use(userModelExists(this.#prisma))
 
     this.#router
       .post('/register', 

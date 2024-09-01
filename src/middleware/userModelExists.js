@@ -9,7 +9,7 @@
  *
  * @throws Will throw an error if the 'user' table does not exist and an error occurs during the database operation.
  */
-export const checkUserExists = (prisma) => 
+export const userModelExists = (prisma) => 
     async (req, res, next) => {
         try {
             const userCount = await prisma.user.count()
