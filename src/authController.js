@@ -10,23 +10,23 @@ import jwt from 'jsonwebtoken'
  * @returns {Function} - An Express middleware function for handling user registration.
  */
 
-export const register = (prisma, secret, identity) => async (req,res) => {
+export const register = (prisma, secret, identities) => async (req,res) => {
     
+  const identitiesObj = {}
+
   try {
-    const { [identity]: userIdentity, password, ...otherProperties } = req.body
-    const user = await prisma.user.findUnique({
-      where: {
-        [identity]: userIdentity,
-      }
-    })
+    const { password, ...otherProperties } = req.body
 
-    if(user) return res.status(409).json('user already exists')
-
+    // TODO implementacion provisional, optimizar esto
+    for(const i in identities){
+      identitiesObj[identities[i]] = req.body[identities[i]]
+    }
+  
     bcrypt.hash(password, 10)
       .then(async (hashedPassword) => {
         const newUser = await prisma.user.create({
           data: { 
-            [identity]: userIdentity,
+            ...identitiesObj,
             password: hashedPassword,
             ...otherProperties
           }
