@@ -13,13 +13,10 @@ import jwt from 'jsonwebtoken'
 export const register = (prisma, secret, identity) => async (req,res) => {
     
   try {
-    // implementar un for que recorra un array de identidades
     const { [identity]: userIdentity, password, ...otherProperties } = req.body
     const user = await prisma.user.findUnique({
       where: {
         [identity]: userIdentity,
-        password,
-        ...otherProperties
       }
     })
 
