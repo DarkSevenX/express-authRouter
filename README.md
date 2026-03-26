@@ -3,8 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/express-authrouter.svg)](https://www.npmjs.com/package/express-authrouter)
 [![license](https://img.shields.io/npm/l/express-authrouter.svg)](./LICENSE)
 [![node](https://img.shields.io/node/v/express-authrouter.svg)](https://nodejs.org)
+[![typescript](https://img.shields.io/badge/TypeScript-ready-blue.svg)](https://www.typescriptlang.org/)
 
 Plug-and-play authentication router for **Express** + **Prisma** + **JWT**.
+
+TypeScript types are included out of the box — no `@types/` package needed.
 
 Drop it into any Express app and get `POST /register` and `POST /login` routes, a `protect()` middleware for guarded routes, and optional `express-validator` integration — all in a few lines.
 
@@ -303,7 +306,7 @@ All error responses follow a consistent JSON shape:
 { "error": "descriptive message here" }
 ```
 
-Validation errors from `auth.result` use:
+Validation errors from `auth.result()` use:
 
 ```json
 { "errors": [ { "msg": "...", "path": "...", ... } ] }
