@@ -1,303 +1,316 @@
+# express-authrouter
 
+[![npm version](https://img.shields.io/npm/v/express-authrouter.svg)](https://www.npmjs.com/package/express-authrouter)
+[![license](https://img.shields.io/npm/l/express-authrouter.svg)](./LICENSE)
+[![node](https://img.shields.io/node/v/express-authrouter.svg)](https://nodejs.org)
 
-# Express-authrouter
+Plug-and-play authentication router for **Express** + **Prisma** + **JWT**.
 
- [![Made with Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://prisma.io)![express](https://img.shields.io/badge/Express%20js-000000?style=for-the-badge&logo=express&logoColor=white)![nodejs](https://img.shields.io/badge/Node%20js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)![jwt](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white)![js](https://img.shields.io/badge/JavaScript-323330?style=for-the-badge&logo=javascript&logoColor=F7DF1E)![json](https://img.shields.io/badge/json-5E5C5C?style=for-the-badge&logo=json&logoColor=white)
+Drop it into any Express app and get `POST /register` and `POST /login` routes, a `protect()` middleware for guarded routes, and optional `express-validator` integration — all in a few lines.
 
-Este paquete npm proporciona una implementación sencilla y reutilizable de rutas de autenticación (registro y login) utilizando Express y Prisma ORM. Está diseñado para ser fácilmente integrado en proyectos existentes.
+---
 
-## Dependencias
+## Table of contents
 
-Este proyecto utiliza las siguientes dependencias clave:
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Prisma schema](#prisma-schema)
+- [API](#api)
+  - [new Auth(prisma, secret, identities, options)](#new-authprisma-secret-identities-options)
+  - [auth.routes()](#authroutes)
+  - [auth.protect()](#authprotect)
+  - [auth.result()](#authresult)
+  - [userModelExists(prisma, userModel?)](#usermodelexistsprisma-usermodel)
+- [HTTP reference](#http-reference)
+- [Using express-validator](#using-express-validator)
+- [Custom model name](#custom-model-name)
+- [Error responses](#error-responses)
+- [License](#license)
 
-* **bcrypt** 
-* **express** 
-* **express-validator**
-* **jsonwebtoken**
-* **prisma ORM**
+---
 
+## Requirements
 
-## Instalación
+| Peer dependency | Minimum version |
+|---|---|
+| `express` | `^4.0.0` |
+| `@prisma/client` | `^5.0.0` |
+| Node.js | `18.0.0` |
 
-Para instalar el paquete, ejecuta el siguiente comando:
+---
+
+## Installation
 
 ```bash
 npm install express-authrouter
 ```
 
-## Uso
+---
 
-### `Auth`
+## Quick start
 
-#### Constructor
+```js
+// app.js
+import express from 'express'
+import { PrismaClient } from '@prisma/client'
+import Auth from 'express-authrouter'
 
-- `prismaObj`: Instancia del PrismaClient.
-- `secret`: Clave secreta para la generación de tokens JWT.
-- `identities[]`: Listado de campos unicos del usuario, puede ser uno o varios (e.g., [`username`,`email`]).
+const app = express()
+const prisma = new PrismaClient()
 
-#### Métodos
+app.use(express.json())
 
-- `protect()`: Devuelve un middleware para verificar tokens JWT.
-- `routes()`: Configura y devuelve las rutas de autenticación (`/register` y `/login`).
-- `result()`: middleware de Express que se utiliza para manejar los resultados de validación de express-validator
+const auth = new Auth(prisma, process.env.JWT_SECRET, ['email'])
 
-### Configuración Básica
+// Public auth routes: POST /auth/register  POST /auth/login
+app.use('/auth', auth.routes())
+
+// Protected route
+app.get('/profile', auth.protect(), (req, res) => {
+  res.json({ userId: req.user.id })
+})
+
+app.listen(3000)
+```
+
+---
 
 ## Prisma schema
-(solo un ejemplo)
-``` javascript
-model user {
-    id Int @id @defautl(autoincrement())
-    username String @unique() // required
-    name String 
-    lastname String?
-    password String // required
+
+Your schema must have a model with:
+- A unique field for each identity you pass (e.g. `email`).
+- A `password` field.
+- An `id` field (used as the JWT payload).
+
+```prisma
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
 }
 ```
 
-el campo identities al ser dinamico se puede usar cualquier atributo de identificación unico dentro del modelo, el modelo tambien puede contener los atributos que desees aparte de estos, no es restrictivo.
+> The model name in camelCase (`user`, `account`, etc.) must match the `userModel` option — defaults to `'user'`.
 
-En este caso vamos a trabajar con el atributo 'username'
+---
 
-Primero, importa la clase `Auth` y Prisma Client en tu aplicación:
+## API
 
-```javascript
-import Auth from 'express-authrouter';
-import { PrismaClient } from '@prisma/client';
+### `new Auth(prisma, secret, identities, options?)`
 
-const prisma = new PrismaClient();
-const auth = new Auth(prisma, process.env.YOUR_SECRET, ['username']); 
-```
-otro uso con multiples campos unicos
-```javascript 
-const auth = new Auth(prisma, process.env.YOUR_SECRET, ['username', 'email']);
-```
-### Rutas de Autenticación
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `prisma` | `PrismaClient` | ✅ | Your Prisma client instance. |
+| `secret` | `string` | ✅ | Secret key for signing/verifying JWT tokens. Use an env variable. |
+| `identities` | `string[]` | ✅ | Fields used as unique user identifiers. The **first** element is used for login lookup. |
+| `options` | `AuthOptions` | — | Optional configuration (see below). |
 
-Agrega las rutas de autenticación a tu aplicación:
+**`AuthOptions`**
 
-```javascript
-app.use('/auth', auth.routes());
-```
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `expiresIn` | `string` | `'7d'` | JWT expiration. Accepts any value valid for [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken#readme) (e.g. `'1h'`, `'30d'`). |
+| `userModel` | `string` | `'user'` | Prisma model name in camelCase. Change this if your model is named differently (e.g. `'account'`). |
 
-Esto añadirá las siguientes rutas a tu servidor:
-
-- **POST /register**: Maneja el registro de un nuevo usuario.
-
-- **Request Body**:
-  - `identities[] `: Identificadores únicos del usuario que fueron definidos en el array identities, en este caso solo es username
-  - `password`: Contraseña del usuario.
-  ``` json
-  {
-    "username":"some username",
-    "password":"some password",
-    "...other fields"
-  }
-  ```
-  en caso de tener mas campos unicos ej: `['username', 'email']`
-  ``` json
-  {
-    "username":"some username",
-    "email":"some email",
-    "password":"some password",
-    "...other fields"
-  }
-
-- **Responses**:
-  - **200 OK**: Registro exitoso, devuelve un token JWT.
-    ```json
-    {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    }
-    ```
-
-  - **409 Conflict**: El nombre de usuario/email ya esta tomado. (en caso de tener varios identities estos van a ser validados automaticamente)
-    ```json
-    {
-      "error": "username is already taken"
-    }
-    ```
-    ### nota
-    tanto la contraseña, como los campos que se marquen como identities se validaran de forma nativa, los demas campos deberan ser validados externamente (el paquete ofrece una facil implementacion con express-validator)
-  - **400 bad request**: faltan campos 
-    ```json
-      {
-        "error": "password is required"
-      }
-    ```
-  - **500 Internal Server Error**: Error en el servidor.
-    ```json
-    {
-      "error": "error message..."
-    }
-    ```
-
-- **POST /auth/login**:
-Maneja la autenticación de un usuario existente.
-
-- **Request Body**:
-
-  el valor que se pasa para el login es el primer elemento de el array de identities, por ejemplo, si nuestro array es `['username', 'email']`, el valor que se usara para loguearse es username
-
-  - `username`: Identificador único del usuario.
-  - `password`: Contraseña del usuario.
-  - `campos adicionales`: la request admite mas campos en caso de que nuestro modelo cuente con campos adicionales, opcionales o requeridos
-  
-  ``` json
-  {
-    "username":"some username",
-    "password":"some password",
-    "other_fields":"some other fields"
-  }
-  ```
-
-- **Responses**:
-  - **200 OK**: Autenticación exitosa, devuelve un token JWT.
-    ```json
-    {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    }
-    ```
-    - **400 bad request**: faltan campos 
-    ```json
-      {
-        "error": "password is required"
-      }
-    ```
-  - **401 Unauthorized**: Contraseña incorrecta.
-    ```json
-    {
-      "error": "incorrect password"
-    }
-    ```
-  - **404 Not Found**: El usuario no existe.
-    ```json
-    {
-      "error": "user not found"
-    }
-    ```
-  - **500 Internal Server Error**: Error en el servidor.
-    ```json
-    {
-      "error": "error message..."
-    }
-    ```
-
-### Middleware de Protección de Rutas
-
-Puedes proteger rutas utilizando el método `protect()`:
-
-```javascript
-app.use('/ruta-protegida', auth.protect(), (req, res) => {
-  res.send('ruta protegida');
-});
+```js
+const auth = new Auth(prisma, process.env.JWT_SECRET, ['email', 'username'], {
+  expiresIn: '1d',
+  userModel: 'user'
+})
 ```
 
-#### `auth.protect()`
+---
 
-Middleware para verificar el token JWT en las peticiones.
+### `auth.routes()`
 
-- **Request body**:
-`headers:` `{token: example.token}`
+Returns an Express `Router` with:
 
-- **Responses**:
-  - **200 OK**: Token válido, se permite el acceso a la ruta protegida.
-  - **403 Forbidden**: No se proporcionó token.
-    ```json
-    {
-      "message": "no token provided"
-    }
-    ```
-  - **401 Unauthorized**: Token inválido o expirado.
-    ```json
-    {
-      "error": "invalid token"
-    }
-    ```
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/register` | Creates a new user. Hashes the password and returns a JWT. |
+| `POST` | `/login` | Validates credentials and returns a JWT. |
 
-
-### Default Middlewares
-
-los siguientes middlewares ya se aplican por defecto en las rutas de login y registro.
-
-#### `userModelExists()`
-
-Middleware para verificar si la tabla de usuarios existe en la base de datos.
-
-- **Responses**:
-  - **500 Internal Server Error**: La tabla `user` no existe o se produjo otro error.
-    ```json
-    {
-      "error": "the table user/users don't exists"
-    }
-    ```
-
-#### `checkUserExists()`
-es un middleware de Express que se utiliza para comprobar si un usuario existe en la base de datos basándose en identidades proporcionadas.
-
-- **Responses**:
-  - **400 bad request**: Se devuelve este código de error y mensaje cuando faltan identidades necesarias en la solicitud.
-    ```json
-    { "error": "email, username are required" }
-    ```
-  - **409 Código de error**: Se devuelve este código de error y mensaje cuando se trata de registrar un usuario con un identity que ya existe en base de datos
-    ```json
-      { "error": "email is already taken" }
-    ```
-
-  - **500 Código de error**: Se devuelve este código de error y mensaje cuando se produce un error durante el proceso de verificación de la existencia del usuario.
-
-  ```json 
-    { "error": "An error occurred    while checking user existence" }
-  ```
-
-### Implementacion de express-validator auth.result()
-
-``` javascript
-npm install express-validator
+```js
+app.use('/auth', auth.routes())
 ```
 
-El paquete ofrece un Middleware para validar la estructura de la solicitud en las rutas de autenticación. para los campos ademas de el password y aquellos que no sean unicos (array de identities)
+---
 
-y se puede implementar de la siguiente manera:
+### `auth.protect()`
 
-digamos que tienes un campo que no es unico llamado `name` en tu modelo
-```javascript
-  const registerValidationRules = [
-  body('name')
-   .notEmpty()
-   .withMessage('name is required'),
-   (req, res, next) => {
-    auth.result(req,res,next)
-  },
-];
+Returns a middleware that validates the JWT from the `Authorization` header.
 
-
-app.use('/', registerValidationRules ,(req,res) => {
-  res.send('Example route');
-});
+```
+Authorization: Bearer <token>
 ```
 
-- **Responses**:
-  - **400 Bad Request**: En caso de que no se cumpla con las validaciones se da la siguiente respuesta 
-    ```json
-    {
-      "errors": [
-        {
-          "msg": "name is required",
-          "param": "name",
-          "location": "body"
-        },
-      ]
-    }
-    ```
+On success, the decoded token payload is available at `req.user` (contains `id`).
 
-aplicar express-validator para los campos definidos dentro de el arrat identities no es necesario, ya que estos se validan, pero se pueden hacer validaciones adicionales con express-validator
+```js
+app.get('/dashboard', auth.protect(), (req, res) => {
+  res.json({ userId: req.user.id })
+})
+```
 
-## Contribuciones
+---
 
-Si deseas contribuir a este paquete, por favor abre un pull request o reporta un issue.
+### `auth.result()`
 
-## Licencia
+Returns a middleware compatible with `express-validator`. Place it after your validator chain to short-circuit with a `400` response if any validation fails.
 
-Este proyecto está bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
+```js
+import { body } from 'express-validator'
+
+app.post(
+  '/auth/register',
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 8 }),
+  auth.result(),        // ← returns 400 if validators above failed
+)
+```
+
+---
+
+### `userModelExists(prisma, userModel?)`
+
+A named export you can use as a startup check to verify that your Prisma migrations have been applied before the app starts accepting traffic. It is **not** run on every request by default.
+
+```js
+import Auth, { userModelExists } from 'express-authrouter'
+
+// Fail fast if the table doesn't exist
+app.use(userModelExists(prisma))           // defaults to model 'user'
+app.use(userModelExists(prisma, 'account'))
+
+app.use('/auth', auth.routes())
+```
+
+---
+
+## HTTP reference
+
+### `POST /register`
+
+**Request body**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "secret123"
+}
+```
+
+Include any extra fields you have in your Prisma model — they are forwarded to `prisma.user.create()`.
+
+**Responses**
+
+| Status | Body | Meaning |
+|---|---|---|
+| `201` | `{ "token": "..." }` | User created. |
+| `400` | `{ "error": "..." }` | Missing required field. |
+| `409` | `{ "error": "email is already taken" }` | Identity already exists. |
+| `500` | `{ "error": "..." }` | Server/database error. |
+
+---
+
+### `POST /login`
+
+The primary identity (first element of `identities`) is used for lookup.
+
+**Request body**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "secret123"
+}
+```
+
+**Responses**
+
+| Status | Body | Meaning |
+|---|---|---|
+| `200` | `{ "token": "..." }` | Login successful. |
+| `400` | `{ "error": "..." }` | Missing field. |
+| `401` | `{ "error": "incorrect password" }` | Wrong password. |
+| `404` | `{ "error": "user not found" }` | No user found. |
+| `500` | `{ "error": "..." }` | Server/database error. |
+
+---
+
+### Protected routes
+
+Send the token in the `Authorization` header:
+
+```
+Authorization: Bearer eyJhbGci...
+```
+
+**Responses**
+
+| Status | Body | Meaning |
+|---|---|---|
+| `200` | *(your handler's response)* | Token valid. `req.user.id` is available. |
+| `403` | `{ "error": "no token provided" }` | Header missing or malformed. |
+| `401` | `{ "error": "..." }` | Token invalid or expired. |
+
+---
+
+## Using express-validator
+
+Add validators before mounting the auth router and use `auth.result()` to short-circuit on errors:
+
+```js
+import { body } from 'express-validator'
+
+app.use(
+  '/auth',
+  body('email').isEmail().withMessage('invalid email').normalizeEmail(),
+  body('password').isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
+  auth.result(),
+  auth.routes()
+)
+```
+
+---
+
+## Custom model name
+
+If your Prisma model is not `User`, pass `userModel` in the options:
+
+```prisma
+model Account {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+}
+```
+
+```js
+const auth = new Auth(prisma, process.env.JWT_SECRET, ['email'], {
+  userModel: 'account'
+})
+```
+
+---
+
+## Error responses
+
+All error responses follow a consistent JSON shape:
+
+```json
+{ "error": "descriptive message here" }
+```
+
+Validation errors from `auth.result` use:
+
+```json
+{ "errors": [ { "msg": "...", "path": "...", ... } ] }
+```
+
+---
+
+## License
+
+[MIT](./LICENSE) — Nelson David Arguedo Ramos (DarkSevenX)

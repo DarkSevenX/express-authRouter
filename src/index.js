@@ -1,89 +1,119 @@
-import { Router } from "express";
-import { register, login } from "./authController.js";
-import { verifyToken } from "./middleware/authJwt.js";
-import { userModelExists } from "./middleware/userModelExists.js";
-import { validationResult } from "express-validator";
-import {checkUserExists} from "./middleware/checkUserExists.js";
+import { Router } from 'express'
+import { register, login } from './authController.js'
+import { verifyToken } from './middleware/authJwt.js'
+import { checkUserExists } from './middleware/checkUserExists.js'
+import { validationResult } from 'express-validator'
 
-//cambio en rama de desarrollo
+export { userModelExists } from './middleware/userModelExists.js'
+
+/**
+ * @typedef {Object} AuthOptions
+ * @property {string} [expiresIn='7d'] - JWT expiration time (e.g. '1h', '7d', '30d').
+ * @property {string} [userModel='user'] - Prisma model name in camelCase (e.g. 'user', 'account').
+ */
+
 class Auth {
   #prisma
-  #router
   #secret
   #identities
-  
+  #options
+
   /**
- * Initializes the Auth class and sets up the necessary properties and Express Router.
- *
- * @param {PrismaClient} prismaObj - The Prisma client for interacting with the database.
- * @param {string} secret - The secret key for generating JWT tokens.
- * @param {string[] } identities - Array of user identities (e.g., email, username)
- */
-  constructor (prismaObj, secret, identities) {
+   * Creates an Auth instance.
+   *
+   * @param {import('@prisma/client').PrismaClient} prismaObj - Prisma client instance.
+   * @param {string} secret - Secret key used to sign JWT tokens.
+   * @param {string[]} identities - Fields used as unique identifiers (e.g. ['email', 'username']).
+   *   The first element is used as the primary login key.
+   * @param {AuthOptions} [options={}] - Optional configuration.
+   *
+   * @example
+   * import { PrismaClient } from '@prisma/client'
+   * import Auth from 'express-authrouter'
+   *
+   * const prisma = new PrismaClient()
+   * const auth = new Auth(prisma, process.env.JWT_SECRET, ['email'], { expiresIn: '1d' })
+   */
+  constructor(prismaObj, secret, identities, options = {}) {
+    if (!prismaObj) throw new Error('[express-authrouter] prismaObj is required')
+    if (!secret) throw new Error('[express-authrouter] secret is required')
+    if (!Array.isArray(identities) || identities.length === 0) {
+      throw new Error('[express-authrouter] identities must be a non-empty array')
+    }
+
     this.#prisma = prismaObj
-    this.#router = Router()
     this.#secret = secret
     this.#identities = identities
+    this.#options = {
+      expiresIn: '7d',
+      userModel: 'user',
+      ...options
+    }
   }
 
   /**
-   * Configures and returns the routes for user authentication.
+   * Returns a new Express Router with the following routes:
+   * - `POST /register` — creates a new user and returns a JWT.
+   * - `POST /login` — authenticates an existing user and returns a JWT.
    *
-   * @returns {Router} - An instance of the Express Router with the configured routes.
-  */
+   * Each call returns a fresh Router, so it is safe to mount this under multiple prefixes.
+   *
+   * @returns {import('express').Router}
+   *
+   * @example
+   * app.use('/auth', auth.routes())
+   */
   routes() {
-    this.#router.use(userModelExists(this.#prisma))
-    this.#router.use('/register', checkUserExists(this.#prisma,this.#identities))
+    const router = Router()
+    const { userModel } = this.#options
 
-    this.#router
-      .post('/register', 
-        register(
-          this.#prisma, 
-          this.#secret, 
-          this.#identities
-        )
-      )
+    router.use('/register', checkUserExists(this.#prisma, this.#identities, userModel))
+    router.post('/register', register(this.#prisma, this.#secret, this.#identities, this.#options))
+    router.post('/login', login(this.#prisma, this.#secret, this.#identities, this.#options))
 
-      .post('/login', 
-        login(
-          this.#prisma, 
-          this.#secret, 
-          this.#identities
-        )
-      )
-
-    return this.#router
+    return router
   }
 
   /**
-   * Configures and returns middleware for verifying token.
+   * Returns a middleware that verifies the JWT from the `Authorization: Bearer <token>` header.
+   * On success, sets `req.user` to the decoded token payload.
    *
-   * @returns {Function} - A middleware function for verifying token.
-  */ 
+   * @returns {import('express').RequestHandler}
+   *
+   * @example
+   * app.get('/profile', auth.protect(), (req, res) => {
+   *   res.json({ userId: req.user.id })
+   * })
+   */
   protect() {
     return verifyToken(this.#secret)
   }
 
-  
   /**
-   * Middleware function to handle validation result from express-validator.
-   * If validation errors exist, it sends a JSON response with an array of errors.
-   * If no validation errors exist, it proceeds to the next middleware function.
+   * Returns a middleware that reads `express-validator` results.
+   * Returns `400` with an `{ errors: [...] }` body if validation failed,
+   * otherwise calls `next()`.
    *
-   * @param {Request} req - The Express request object.
-   * @param {Response} res - The Express response object.
-   * @param {NextFunction} next - The Express next middleware function.
+   * @returns {import('express').RequestHandler}
    *
-   * @returns {void}
+   * @example
+   * import { body } from 'express-validator'
+   *
+   * app.post(
+   *   '/auth/register',
+   *   body('email').isEmail(),
+   *   auth.result(),
+   * )
    */
-  result (req,res,next) {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) {
-      return res.status(400).json(errors.array())
+  result() {
+    return (req, res, next) => {
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
+      }
+      next()
     }
-    next()
   }
-
 }
 
-export default Auth 
+export default Auth

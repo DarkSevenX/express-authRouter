@@ -1,20 +1,47 @@
 {
   "name": "express-authrouter",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "type": "module",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["Prisma ORM", "ORM", "prisma", "auth", "express", "login", "register", "auth express", "express auth"],
+  "keywords": [
+    "prisma",
+    "auth",
+    "express",
+    "login",
+    "register",
+    "jwt",
+    "authentication",
+    "middleware",
+    "express-router"
+  ],
   "author": "Nelson David Arguedo Ramos - DarkSevenX",
-  "license": "ISC",
-  "description": "paquete para proporcionar rutas de autenticación de usuarios utilizando Express, Prisma y JWT",
+  "license": "MIT",
+  "description": "Plug-and-play authentication router for Express + Prisma + JWT",
+  "peerDependencies": {
+    "@prisma/client": ">=5.0.0",
+    "express": ">=4.0.0"
+  },
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "express": "^4.19.2",
     "express-validator": "^7.2.0",
     "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "express": "^4.19.2"
   },
   "repository": {
     "type": "git",

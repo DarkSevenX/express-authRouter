@@ -1,25 +1,29 @@
 import jwt from 'jsonwebtoken'
 
 /**
- * Verifies the JWT token provided in the request.
+ * Middleware that verifies the JWT from the `Authorization: Bearer <token>` header.
+ * On success, attaches the decoded payload to `req.user` and calls `next()`.
  *
- * @param {string} secret - The secret key for verifying the JWT token.
- * @returns {Function} - An Express middleware function for verifying the JWT token.
+ * @param {string} secret - The secret key used to verify the token.
+ * @returns {import('express').RequestHandler}
  */
-export const verifyToken = (secret) =>  (req,res,next) => {
+export const verifyToken = (secret) => (req, res, next) => {
   try {
-    const token = req.headers['token']
+    const authHeader = req.headers['authorization']
 
-    if(!token) return res.status(403).json({ message: 'no token provided' })
-    
-    jwt.verify(token, secret, (err,decode) => {
-      if(err) return res.status(401).json(err)
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(403).json({ error: 'no token provided' })
+    }
 
-      req.user = decode
+    const token = authHeader.split(' ')[1]
+
+    jwt.verify(token, secret, (err, decoded) => {
+      if (err) return res.status(401).json({ error: err.message })
+      req.user = decoded
       next()
     })
   } catch (error) {
-    res.json(error.message)
-    console.log(error)
+    console.error(error)
+    return res.status(500).json({ error: error.message })
   }
 }
